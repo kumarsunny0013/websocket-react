@@ -15,6 +15,7 @@ function Ws() {
     const [tradeAmount, setTradeAmount] = useState();
     const [message, setMessage] = useState("");
     const [messageRcv, setMessageRcv] = useState("");
+    const [connectionState, setConnectionState] = useState("");
 
     useEffect(() => {
         const ws = new WebSocket('wss://ws.bitstamp.net');
@@ -24,7 +25,7 @@ function Ws() {
         ws.onmessage = function (event) {
             const json = JSON.parse(event.data);
             try {
-                if ((json.event == 'data')) {
+                if ((json.event === 'data')) {
                     setBids(json.data.bids.slice(0, 5));
                 }
             } catch (err) {
@@ -77,30 +78,52 @@ function Ws() {
         </div>
     ));
 
-    const openConnection = () => ws3 = new WebSocket('wss://socketsbay.com/wss/v2/2/demo/');
+    const openConnection = () => {
+        if(ws3!=null)
+        setConnectionState(ws3.readyState);
+        ws3 = new WebSocket('wss://socketsbay.com/wss/v2/2/demo/'); 
+        ws3.onopen(()=>setConnectionState(ws3.readyState));
+        setConnectionState(ws3.readyState)
+    
+    };
     const closeConnection = () => {
-        if(ws3.c)
+        if(ws3==null || ws3.readyState===WebSocket.CLOSED){
+            return alert("connection already closed");
+        }
+        setConnectionState(ws3.readyState);
         ws3.close();
+        ws3.onclose(()=>setConnectionState(ws3.readyState));
+        
+
     }
 
-    const sendMsg = useCallback(() => ws3.send(message));
-    useEffect(() => {
+    const sendMsg = useCallback(() => {
+        if(ws3===null || ws3.readyState===WebSocket.CLOSED){
+            return alert("please open a connection first");
+        }
+        if(message==="")
+        return alert("type a message to send");
+        ws3.send(message);
+        setMessage("");
+    }
+        );
+    // useEffect(() => {
         if(ws3!=null){
         ws3.onmessage = (event) => {
-            // console.log(event.data);
+            console.log(event.data);
             setMessageRcv(event.data);
         }}
-    },[])
-
+    // },[])
 
     // console.log(messageRcv)
     return <div>
         {firstBids}
         <p>Amount: {tradeAmount?.amount}</p>
         <p>Price: {tradeAmount?.price}</p>
+        <p>{connectionState}</p>
         <button onClick={openConnection}>open connection</button>
         <button onClick={closeConnection}>close connection</button>
-        <input type="text" onChange={(e) => setMessage(e.target.value)} />
+        <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} />
         <button onClick={sendMsg}>Cleck to send hi</button>
         <h4> {messageRcv}</h4>
     </div>;
